@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23ff9d00'/%3E%3Ctext x='16' y='22' font-size='18' text-anchor='middle' fill='%231a1206' font-weight='bold'%3ES%3C/text%3E%3C/svg%3E">
+<title>Sunset Bay — an open-world crime game</title>
+<style>
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #0b1622; font-family: "Trebuchet MS", "Segoe UI", Verdana, sans-serif; }
+  #game-canvas { position: fixed; inset: 0; display: block; }
+  .hidden { display: none !important; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.8); z-index: 5; }
+  #hud-top-left { position: absolute; top: 14px; left: 16px; }
+  #health-wrap { width: 220px; height: 16px; background: rgba(0,0,0,.55); border: 2px solid rgba(255,255,255,.75); border-radius: 3px; overflow: hidden; }
+  #health-bar { height: 100%; width: 100%; background: linear-gradient(90deg, #37d67a, #9be15d); }
+  #money { margin-top: 6px; font-size: 26px; font-weight: bold; color: #7dff9a; letter-spacing: 1px; }
+  #hud-top-right { position: absolute; top: 12px; right: 18px; font-size: 34px; letter-spacing: 4px; color: #ffd23e; }
+  #hud-top-right .star-off { color: rgba(255,255,255,.28); }
+  #objective { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); max-width: 46%; text-align: center; font-size: 17px; font-weight: bold; background: rgba(0,0,0,.55); padding: 7px 16px; border-radius: 6px; border-left: 4px solid #ffb020; }
+  #objective small { display: block; font-weight: normal; font-size: 13px; color: #ffd98a; }
+  #speedo { position: absolute; bottom: 18px; left: 20px; font-size: 30px; font-weight: bold; }
+  #speedo small { font-size: 14px; color: #cfe8ff; }
+  #minimap { position: absolute; bottom: 16px; right: 16px; width: 190px; height: 190px; border: 3px solid rgba(255,255,255,.8); border-radius: 6px; background: rgba(8,20,32,.85); }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; }
+  #crosshair:before, #crosshair:after { content: ""; position: absolute; background: #fff; box-shadow: 0 0 3px #000; }
+  #crosshair:before { left: 10px; top: 0; width: 2px; height: 22px; }
+  #crosshair:after { left: 0; top: 10px; width: 22px; height: 2px; }
+  #toast { position: absolute; bottom: 220px; left: 50%; transform: translateX(-50%); font-size: 20px; font-weight: bold; color: #ffe9a8; background: rgba(0,0,0,.6); padding: 8px 18px; border-radius: 6px; opacity: 0; transition: opacity .3s; }
+  #hint { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); font-size: 14px; background: rgba(0,0,0,.55); padding: 6px 12px; border-radius: 5px; color: #eaf6ff; }
+  #vignette { position: fixed; inset: 0; pointer-events: none; z-index: 6; opacity: 0; background: radial-gradient(ellipse at center, transparent 55%, rgba(200,0,0,.55) 100%); transition: opacity .25s; }
+
+  /* ---------- Screens ---------- */
+  .screen { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; text-align: center; }
+  #start-screen { background: linear-gradient(180deg, rgba(8,24,44,.25) 0%, rgba(8,24,44,.78) 62%, rgba(4,10,20,.92) 100%); }
+  #start-screen h1 { font-size: 84px; margin: 0; letter-spacing: 6px; color: #ffb020; text-shadow: 0 4px 0 #b3541e, 0 10px 30px rgba(0,0,0,.8); font-style: italic; }
+  #start-screen h2 { margin: 2px 0 18px; font-size: 22px; letter-spacing: 10px; color: #7dd8ff; font-weight: normal; }
+  #start-screen p.story { max-width: 620px; font-size: 16px; line-height: 1.55; color: #eaf6ff; background: rgba(0,0,0,.45); padding: 12px 18px; border-radius: 8px; }
+  #start-screen .controls { font-size: 14px; line-height: 1.9; color: #cfe8ff; margin: 10px 0 20px; }
+  #start-screen .controls b { color: #ffd23e; }
+  .btn { pointer-events: auto; cursor: pointer; font-size: 22px; font-weight: bold; letter-spacing: 2px; color: #1a1206; background: linear-gradient(180deg, #ffd23e, #ff9d00); border: none; border-radius: 8px; padding: 14px 44px; box-shadow: 0 4px 0 #a86a00, 0 8px 24px rgba(0,0,0,.5); }
+  .btn:hover { filter: brightness(1.08); }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #a86a00; }
+  .btn.ghost { background: rgba(255,255,255,.14); color: #fff; box-shadow: none; border: 2px solid rgba(255,255,255,.6); font-size: 16px; padding: 10px 26px; margin-top: 12px; }
+  #pause-screen, #over-screen, #win-screen { background: rgba(4,10,20,.78); }
+  #pause-screen h1, #over-screen h1, #win-screen h1 { font-size: 56px; margin: 0 0 10px; letter-spacing: 4px; }
+  #over-screen h1 { color: #ff5a5a; }
+  #win-screen h1 { color: #7dff9a; }
+  .screen p { font-size: 17px; color: #dfeeff; max-width: 560px; line-height: 1.6; }
+  #over-stats, #win-stats { font-size: 18px; color: #ffd23e; margin: 8px 0 18px; line-height: 1.8; }
+</style>
+</head>
+<body>
+<canvas id="game-canvas"></canvas>
+<div id="vignette"></div>
+
+<div id="hud" class="hidden">
+  <div id="hud-top-left">
+    <div id="health-wrap"><div id="health-bar"></div></div>
+    <div id="money">$0</div>
+  </div>
+  <div id="hud-top-right"></div>
+  <div id="objective"></div>
+  <div id="speedo"></div>
+  <canvas id="minimap" width="190" height="190"></canvas>
+  <div id="crosshair" class="hidden"></div>
+  <div id="toast"></div>
+  <div id="hint"></div>
+</div>
+
+<div id="start-screen" class="screen">
+  <h1>SUNSET BAY</h1>
+  <h2>AN OPEN-WORLD CRIME STORY</h2>
+  <p class="story">Welcome to Sunset Bay — a sun-soaked coastal city where the ocean meets the
+  highway and everyone has a price. You are <b>Rook</b>, a wheelman fresh out of the
+  Marina lockup. <b>Marla Vane</b> has three jobs for you, and the Bay City Police
+  Department has its eye on you. Steal cars, outrun the law, and don't get caught.</p>
+  <div class="controls">
+    <b>W A S D</b> move / drive &nbsp;·&nbsp; <b>Mouse drag</b> look &nbsp;·&nbsp; <b>Space</b> jump &nbsp;·&nbsp; <b>Shift</b> run / handbrake<br>
+    <b>E</b> enter &amp; exit car / pick up &nbsp;·&nbsp; <b>Click</b> shoot pistol &nbsp;·&nbsp; <b>1 / 2</b> fists / pistol &nbsp;·&nbsp; <b>R</b> reload &nbsp;·&nbsp; <b>Esc</b> pause
+  </div>
+  <button class="btn" id="start-btn">START ENGINE</button>
+  <button class="btn ghost" id="continue-btn">CONTINUE SAVED GAME</button>
+  <div style="margin-top:14px;font-size:13px;color:#9fc3e8">Best in desktop Chrome · sound on for the full ride</div>
+</div>
+
+<div id="pause-screen" class="screen hidden">
+  <h1>PAUSED</h1>
+  <p>The city waits for no one, Rook. Well — right now it does.</p>
+  <button class="btn" id="resume-btn">RESUME</button>
+  <button class="btn ghost" id="restart-btn">RESTART DAY</button>
+</div>
+
+<div id="over-screen" class="screen hidden">
+  <h1>BUSTED / WASTED</h1>
+  <p id="over-text">The Bay City PD finally caught up with you.</p>
+  <div id="over-stats"></div>
+  <button class="btn" id="retry-btn">TRY AGAIN</button>
+</div>
+
+<div id="win-screen" class="screen hidden">
+  <h1>THE BAY IS YOURS</h1>
+  <p>You finished all three of Marla's jobs and slipped the net. Sunset Bay belongs to Rook now.</p>
+  <div id="win-stats"></div>
+  <button class="btn" id="freeroam-btn">KEEP CRUISING (FREE ROAM)</button>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="src/config.js"></script>
+<script src="src/audio.js"></script>
+<script src="src/input.js"></script>
+<script src="src/city.js"></script>
+<script src="src/vehicles.js"></script>
+<script src="src/traffic.js"></script>
+<script src="src/police.js"></script>
+<script src="src/combat.js"></script>
+<script src="src/missions.js"></script>
+<script src="src/hud.js"></script>
+<script src="src/main.js"></script>
+</body>
+</html>
